@@ -3,7 +3,7 @@ package lib::glob;
 use warnings;
 use strict;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use File::Glob qw(bsd_glob);
 
@@ -12,11 +12,24 @@ my $sep = quotemeta($^O =~ /Win32/ ? ';' : ':');
 sub import {
     my $class = shift;
     for (split /$sep/o, join ',', @_) {
-	# print "looking for libraries in $_\n";
-	my @paths = bsd_glob($_);
-	push @INC, @paths;
+        # print "looking for libraries in $_\n";
+
+        my $beginning = 0;
+        if (substr($_, 0, 1) eq '^'){
+            $_ = substr($_, 1);
+            $beginning = 1;
+        }
+
+        my @paths = bsd_glob($_);
+
+        if ($beginning){
+            unshift @INC, @paths;
+        } else {
+            push @INC, @paths;
+        }
     }
 }
+
 
 1;
 __END__
@@ -31,10 +44,12 @@ From Perl...
 
     use lib::glob '../*/lib';
     use lib::glob '*/lib:/usr/local/perl/*/lib';
+    use lib::glob '*/lib:^*/first';
 
 or from the shell...
 
     perl -Mlib::glob='*/lib:/usr/local/perl/*/lib' script.pl
+    perl -Mlib::glob='*/lib:^/usr/local/perl/*/lib' script.pl
 
 
 =head1 DESCRIPTION
@@ -43,6 +58,9 @@ This module globs the given paths and adds then to @INC.
 
 Several path patterns can be passed in a single call separated by
 colons (or by semicolons on Windows).
+
+If the ^ character is added at the beginning of the path, every
+module of that path will be added at the beginning of @INC.
 
 =head1 BUGS
 
